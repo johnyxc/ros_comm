@@ -74,9 +74,9 @@ void Connection::initialize(const TransportPtr& transport, bool is_server, const
   header_func_ = header_func;
   is_server_ = is_server;
 
-  transport_->setReadCallback(boost::bind(&Connection::onReadable, this, _1));
-  transport_->setWriteCallback(boost::bind(&Connection::onWriteable, this, _1));
-  transport_->setDisconnectCallback(boost::bind(&Connection::onDisconnect, this, _1));
+  transport_->setReadCallback(boost::bind(&Connection::onReadable, shared_from_this(), _1));
+  transport_->setWriteCallback(boost::bind(&Connection::onWriteable, shared_from_this(), _1));
+  transport_->setDisconnectCallback(boost::bind(&Connection::onDisconnect, shared_from_this(), _1));
 
   if (header_func)
   {
