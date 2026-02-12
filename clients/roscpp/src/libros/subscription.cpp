@@ -609,9 +609,12 @@ void Subscription::pendingConnectionDone(const PendingConnectionPtr& conn, XmlRp
 
 uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool nocopy, const boost::shared_ptr<M_string>& connection_header, const PublisherLinkPtr& link)
 {
-  boost::mutex::scoped_lock lock(callbacks_mutex_);
-
   uint32_t drops = 0;
+  LatchInfo li;
+  auto need_insert = false;
+  
+  {
+    boost::mutex::scoped_lock lock(callbacks_mutex_);
 
   // Cache the deserializers by type info.  If all the subscriptions are the same type this has the same performance as before.  If
   // there are subscriptions with different C++ type (but same ROS message type), this now works correctly rather than passing
@@ -676,16 +679,22 @@ uint32_t Subscription::handleMessage(const SerializedMessage& m, bool ser, bool 
   // If this link is latched, store off the message so we can immediately pass it to new subscribers later
   if (link->isLatched())
   {
-    LatchInfo li;
     li.connection_header = connection_header;
     li.link = link;
     li.message = m;
     li.receipt_time = receipt_time;
-    latched_messages_[link] = li;
+    need_insert = true;
   }
 
   cached_deserializers_.clear();
+  }
 
+  if (need_insert)
+  {
+    boost::mutex::scoped_lock lock(publisher_links_mutex_);
+    latched_messages_[link] = li;
+  }
+  
   return drops;
 }
 
