@@ -63,7 +63,7 @@ Connection::~Connection()
 {
   ROS_DEBUG_NAMED("superdebug", "Connection destructing, dropped=%s", dropped_ ? "true" : "false");
 
-  drop(Destructing);
+  //drop(Destructing);
 }
 
 void Connection::initialize(const TransportPtr& transport, bool is_server, const HeaderReceivedFunc& header_func)
@@ -80,7 +80,7 @@ void Connection::initialize(const TransportPtr& transport, bool is_server, const
 
   if (header_func)
   {
-    read(4, boost::bind(&Connection::onHeaderLengthRead, this, _1, _2, _3, _4));
+    read(4, boost::bind(&Connection::onHeaderLengthRead, shared_from_this(), _1, _2, _3, _4));
   }
 }
 
@@ -368,7 +368,7 @@ void Connection::writeHeader(const M_string& key_vals, const WriteFinishedFunc& 
   memcpy(full_msg.get() + 4, buffer.get(), len);
   *((uint32_t*)full_msg.get()) = len;
 
-  write(full_msg, msg_len, boost::bind(&Connection::onHeaderWritten, this, _1), false);
+  write(full_msg, msg_len, boost::bind(&Connection::onHeaderWritten, shared_from_this(), _1), false);
 }
 
 void Connection::sendHeaderError(const std::string& error_msg)
@@ -376,7 +376,7 @@ void Connection::sendHeaderError(const std::string& error_msg)
   M_string m;
   m["error"] = error_msg;
 
-  writeHeader(m, boost::bind(&Connection::onErrorHeaderWritten, this, _1));
+  writeHeader(m, boost::bind(&Connection::onErrorHeaderWritten, shared_from_this(), _1));
   sending_header_error_ = true;
 }
 
@@ -400,7 +400,7 @@ void Connection::onHeaderLengthRead(const ConnectionPtr& conn, const boost::shar
     conn->drop(HeaderError);
   }
 
-  read(len, boost::bind(&Connection::onHeaderRead, this, _1, _2, _3, _4));
+  read(len, boost::bind(&Connection::onHeaderRead, shared_from_this(), _1, _2, _3, _4));
 }
 
 void Connection::onHeaderRead(const ConnectionPtr& conn, const boost::shared_array<uint8_t>& buffer, uint32_t size, bool success)
@@ -455,7 +455,7 @@ void Connection::setHeaderReceivedCallback(const HeaderReceivedFunc& func)
   header_func_ = func;
 
   if (transport_->requiresHeader())
-    read(4, boost::bind(&Connection::onHeaderLengthRead, this, _1, _2, _3, _4));
+    read(4, boost::bind(&Connection::onHeaderLengthRead, shared_from_this(), _1, _2, _3, _4));
 }
 
 std::string Connection::getCallerId()
