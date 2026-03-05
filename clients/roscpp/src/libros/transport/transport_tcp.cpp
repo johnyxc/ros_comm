@@ -465,12 +465,15 @@ void TransportTCP::close()
         }
         sock_ = ROS_INVALID_SOCKET;
 
-        disconnect_cb = disconnect_cb_;
+        {
+          boost::mutex::scoped_lock cb_lock(callback_mutex_);
+          disconnect_cb = disconnect_cb_;
 
-        disconnect_cb_ = Callback();
-        read_cb_ = Callback();
-        write_cb_ = Callback();
-        accept_cb_ = AcceptCallback();
+          disconnect_cb_ = Callback();
+          read_cb_ = Callback();
+          write_cb_ = Callback();
+          accept_cb_ = AcceptCallback();
+        }
       }
     }
   }

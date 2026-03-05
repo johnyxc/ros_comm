@@ -40,6 +40,7 @@
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <boost/thread/mutex.hpp>
 #include <vector>
 
 namespace ros
@@ -107,15 +108,15 @@ public:
   /**
    * \brief Set the function to call when this transport has disconnected, either through a call to close(). Or a disconnect from the remote host.
    */
-  void setDisconnectCallback(const Callback& cb) { disconnect_cb_ = cb; }
+  void setDisconnectCallback(const Callback& cb) { boost::mutex::scoped_lock lock(callback_mutex_); disconnect_cb_ = cb; }
   /**
    * \brief Set the function to call when there is data available to be read by this transport
    */
-  void setReadCallback(const Callback& cb) { read_cb_ = cb; }
+  void setReadCallback(const Callback& cb) { boost::mutex::scoped_lock lock(callback_mutex_); read_cb_ = cb; }
   /**
    * \brief Set the function to call when there is space available to write on this transport
    */
-  void setWriteCallback(const Callback& cb) { write_cb_ = cb; }
+  void setWriteCallback(const Callback& cb) { boost::mutex::scoped_lock lock(callback_mutex_); write_cb_ = cb; }
 
   /**
    * \brief Returns a string description of both the type of transport and who the transport is connected to
@@ -136,6 +137,8 @@ protected:
   Callback disconnect_cb_;
   Callback read_cb_;
   Callback write_cb_;
+
+  boost::mutex callback_mutex_;
 
   /**
    * \brief returns true if the transport is allowed to connect to the host passed to it.
