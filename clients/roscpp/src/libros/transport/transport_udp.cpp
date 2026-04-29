@@ -351,6 +351,12 @@ void TransportUDP::close()
   }
 }
 
+bool TransportUDP::isClosed()
+{
+  boost::mutex::scoped_lock lock(close_mutex_);
+  return closed_;
+}
+
 int32_t TransportUDP::read(uint8_t* buffer, uint32_t size)
 {
   {

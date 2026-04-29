@@ -82,6 +82,15 @@ void Connection::initialize(const TransportPtr& transport, bool is_server, const
   {
     read(4, boost::bind(&Connection::onHeaderLengthRead, shared_from_this(), _1, _2, _3, _4));
   }
+
+  // If the transport is already closed by the time we've registered callbacks,
+  // drop the connection immediately so callers (eg. ConnectionManager) don't
+  // end up holding a connection that will never receive a disconnect callback.
+  if (transport_->isClosed())
+  {
+    drop(TransportDisconnect);
+    return;
+  }
 }
 
 boost::signals2::connection Connection::addDropListener(const DropFunc& slot)
@@ -103,6 +112,7 @@ void Connection::onReadable(const TransportPtr& transport)
 
   readTransport();
 }
+
 
 void Connection::readTransport()
 {

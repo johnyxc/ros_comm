@@ -729,6 +729,12 @@ void TransportTCP::socketUpdate(int events)
   }
 }
 
+bool TransportTCP::isClosed()
+{
+  boost::recursive_mutex::scoped_lock lock(close_mutex_);
+  return closed_;
+}
+
 std::string TransportTCP::getTransportInfo()
 {
   std::stringstream str;

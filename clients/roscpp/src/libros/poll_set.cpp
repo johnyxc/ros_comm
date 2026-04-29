@@ -183,7 +183,7 @@ void PollSet::signal()
 }
 
 
-void PollSet::update(int poll_timeout)
+int PollSet::update(int poll_timeout)
 {
   createNativePollset();
 
@@ -191,13 +191,30 @@ void PollSet::update(int poll_timeout)
   boost::shared_ptr<std::vector<socket_pollfd> > ofds = poll_sockets(epfd_, &ufds_.front(), ufds_.size(), poll_timeout);
   if (!ofds)
   {
+    // poll/epoll/select returned an error (ofds == NULL). If it was an EINTR, treat as interrupt/timeout.
     if (last_socket_error() != EINTR)
     {
       ROS_ERROR_STREAM("poll failed with error " << last_socket_error_string());
+      boost::mutex::scoped_lock lock(just_deleted_mutex_);
+      just_deleted_.clear();
+      return 1; // error
+    }
+    else
+    {
+      boost::mutex::scoped_lock lock(just_deleted_mutex_);
+      just_deleted_.clear();
+      return 2; // interrupted, treat as timeout/no-work
     }
   }
   else
   {
+    if (ofds->empty())
+    {
+      boost::mutex::scoped_lock lock(just_deleted_mutex_);
+      just_deleted_.clear();
+      return 2; // timeout / no events
+    }
+
     for (std::vector<socket_pollfd>::iterator it = ofds->begin() ; it != ofds->end(); ++it)
     {
       int fd = it->fd;
@@ -260,7 +277,7 @@ void PollSet::update(int poll_timeout)
 
   boost::mutex::scoped_lock lock(just_deleted_mutex_);
   just_deleted_.clear();
-
+  return 0; // had events and processed
 }
 
 void PollSet::createNativePollset()

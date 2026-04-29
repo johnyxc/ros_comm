@@ -29,6 +29,7 @@
 #include "ros/common.h"
 
 #include <signal.h>
+#include <boost/chrono.hpp>
 
 namespace ros
 {
@@ -73,11 +74,24 @@ void PollManager::threadFunc()
 {
   disableAllSignalsInThisThread();
 
+  int consecutive_no_work = 0;
+
   while (!shutting_down_)
   {
     {
       boost::recursive_mutex::scoped_lock lock(signal_mutex_);
-      poll_signal_();
+      try
+      {
+        poll_signal_();
+      }
+      catch (const std::exception &e)
+      {
+        ROS_ERROR_STREAM("Exception in poll_signal_ listener: " << e.what());
+      }
+      catch (...)
+      {
+        ROS_ERROR("Unknown exception in poll_signal_ listener");
+      }
     }
 
     if (shutting_down_)
@@ -85,7 +99,22 @@ void PollManager::threadFunc()
       return;
     }
 
-    poll_set_.update(100);
+    int status = poll_set_.update(100);
+
+    if (status == 0)
+    {
+      consecutive_no_work = 0;
+    }
+    else
+    {
+      ++consecutive_no_work;
+      if (consecutive_no_work >= 10)
+      {
+        // Back off briefly to avoid busy-looping when poll returns immediately
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+        consecutive_no_work = 0;
+      }
+    }
   }
 }
 

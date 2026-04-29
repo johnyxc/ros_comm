@@ -104,6 +104,13 @@ public:
    */
   virtual const char* getType() = 0;
 
+  /**
+   * \brief Returns whether this transport has been closed.
+   * Default implementation returns false; transports that track a closed
+   * state should override this to allow callers to query state safely.
+   */
+  virtual bool isClosed() { return false; }
+
   typedef boost::function<void(const TransportPtr&)> Callback;
   /**
    * \brief Set the function to call when this transport has disconnected, either through a call to close(). Or a disconnect from the remote host.

@@ -122,6 +122,8 @@ public:
 
   virtual const char* getType() { return "TCPROS"; }
 
+  virtual bool isClosed();
+
 private:
   /**
    * \brief Initializes the assigned socket -- sets it to non-blocking and enables reading

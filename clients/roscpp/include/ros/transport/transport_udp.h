@@ -121,6 +121,8 @@ public:
 
   int getMaxDatagramSize() const {return max_datagram_size_;}
 
+  virtual bool isClosed();
+
 private:
   /**
    * \brief Initializes the assigned socket -- sets it to non-blocking and enables reading

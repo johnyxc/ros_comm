@@ -176,10 +176,12 @@ void ConnectionManager::udprosIncomingConnection(const TransportUDPPtr& transpor
   ROSCPP_LOG_DEBUG("UDPROS received a connection from [%s]", client_uri.c_str());
 
   ConnectionPtr conn(boost::make_shared<Connection>());
-  addConnection(conn);
-
   conn->initialize(transport, true, NULL);
-  onConnectionHeaderReceived(conn, header);
+  if (!conn->isDropped())
+  {
+    addConnection(conn);
+    onConnectionHeaderReceived(conn, header);
+  }
 }
 
 void ConnectionManager::tcprosAcceptConnection(const TransportTCPPtr& transport)
@@ -188,9 +190,11 @@ void ConnectionManager::tcprosAcceptConnection(const TransportTCPPtr& transport)
   ROSCPP_LOG_DEBUG("TCPROS received a connection from [%s]", client_uri.c_str());
 
   ConnectionPtr conn(boost::make_shared<Connection>());
-  addConnection(conn);
-
   conn->initialize(transport, true, boost::bind(&ConnectionManager::onConnectionHeaderReceived, this, _1, _2));
+  if (!conn->isDropped())
+  {
+    addConnection(conn);
+  }
 }
 
 bool ConnectionManager::onConnectionHeaderReceived(const ConnectionPtr& conn, const Header& header)

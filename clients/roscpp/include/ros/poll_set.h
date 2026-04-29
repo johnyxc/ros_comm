@@ -108,7 +108,7 @@ public:
    * if there are no events.  Note that this does not provide an upper bound for the entire
    * function, just the call to poll()
    */
-  void update(int poll_timeout);
+  int update(int poll_timeout);
 
   /**
    * \brief Signal our poll() call to finish if it's blocked waiting (see the poll_timeout
