@@ -347,8 +347,38 @@ void Connection::drop(DropReason reason)
 
   if (did_drop)
   {
+    // Clear pending read/write callbacks and buffers to break potential
+    // reference cycles (e.g. callbacks created with shared_from_this()).
+    // Important: do this WITHOUT holding drop_mutex_ to avoid a deadlock
+    // where another thread holds read_mutex_ and is invoking a callback
+    // that tries to call drop() (which would wait on drop_mutex_).
+    {
+      boost::recursive_mutex::scoped_lock lock(read_mutex_);
+      read_callback_.clear();
+      read_buffer_.reset();
+      read_size_ = 0;
+      read_filled_ = 0;
+      has_read_callback_ = 0;
+    }
+
+    {
+      boost::mutex::scoped_lock lock(write_callback_mutex_);
+      write_callback_ = WriteFinishedFunc();
+      write_buffer_.reset();
+      write_size_ = 0;
+      write_sent_ = 0;
+      has_write_callback_ = 0;
+      header_written_callback_ = WriteFinishedFunc();
+    }
+
     transport_->close();
-    drop_signal_(shared_from_this(), reason);
+
+    // Re-acquire drop_mutex_ only for emitting the drop signal to preserve
+    // original semantics (prevent races around drop listeners being added/removed).
+    {
+      boost::recursive_mutex::scoped_lock lock(drop_mutex_);
+      drop_signal_(shared_from_this(), reason);
+    }
   }
 }
 
